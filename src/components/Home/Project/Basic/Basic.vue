@@ -1,8 +1,10 @@
 <template>
 	<div>
-		<basic-info class="basic__card" :name="basic.name" :host_name="basic.host_name" :start="basic.start" :end="basic.end" :description="basic.description" />
-		<basic-sprint class="basic__card" />
-		<basic-rtd class="basic__card" />
+		<basic-info class="basic__card" :name="basic.name" :host_name="basic.host_name" :start="basic.start" :end="basic.end"
+		 :description="basic.description" :state="basic.state" />
+		<basic-sprint class="basic__card" :name="sprint.name" :state="sprint.state" :time="sprint.time" />
+		<basic-rtd class="basic__card" :count="rtd.count" :already="rtd.already" :processing="rtd.processing" :nostarting="rtd.nostarting"
+		 :percentage="rtd.percentage" :dCnt="rtd.dCnt" :rCnt="rtd.rCnt"/>
 	</div>
 </template>
 <script>
@@ -26,38 +28,136 @@
 		data() {
 			return {
 				basic: {
-					ID: 1,
-					name: '测试项目',
-					host_name: '项目负责人',
-					description: '用于添加各类测试',
-					start: '2020/12/27',
-					end: '2020/12/28'
+					name: this._GLOBAL.ProjectList[this._GLOBAL.projectIndex].name,
+					host_name: this._GLOBAL.ProjectList[this._GLOBAL.projectIndex].host_ID,
+					description: this._GLOBAL.ProjectList[this._GLOBAL.projectIndex].description,
+					start: this._GLOBAL.ProjectList[this._GLOBAL.projectIndex].startDate,
+					end: this._GLOBAL.ProjectList[this._GLOBAL.projectIndex].endDate,
+					state: this._GLOBAL.ProjectList[this._GLOBAL.projectIndex].state,
 				},
+				sprint: {
+					name: '',
+					state: '',
+					time: '',
+				},
+				rtd: {
+					count: 0,
+					already: 0,
+					processing: 0,
+					nostarting: 0,
+					percentage: 0,
+					dCnt: 0,
+					rCnt: 0,
+				}
 			}
 		},
 		watch: {
 			// 若 projectID 变更，更新页面
 			projectID(to, from) {
-				// update
-				
+				this.basic.name = this._GLOBAL.ProjectList[this._GLOBAL.projectIndex].name;
+				this.basic.host_name = this._GLOBAL.ProjectList[this._GLOBAL.projectIndex].host_ID;
+				this.basic.description = this._GLOBAL.ProjectList[this._GLOBAL.projectIndex].description;
+				this.basic.start = this._GLOBAL.ProjectList[this._GLOBAL.projectIndex].startDate;
+				this.basic.end = this._GLOBAL.ProjectList[this._GLOBAL.projectIndex].endDate;
+				this.basic.state = this._GLOBAL.ProjectList[this._GLOBAL.projectIndex].state;
+				this.getSprintName();
+				this.calculate();
 			}
 		},
+		created: function() {
+			this.func();
+
+		},
+    mounted () {
+      this.func()
+    },
 		methods: {
-// 			addRequires() {
-// 				this.$alert('Add a require', 'dialog', {
-// 					confirmButtonText: 'OK'
-// 				})
-// 			},
-// 			addTasks() {
-// 				this.$alert('Add a task', 'dialog', {
-// 					confirmButtonText: 'OK'
-// 				})
-// 			},
-// 			addDefects() {
-// 				this.$alert('Add a defect', 'dialog', {
-// 					confirmButtonText: 'OK'
-// 				})
-// 			}
+			func() {
+				this.basic.name = this._GLOBAL.ProjectList[this._GLOBAL.projectIndex].name;
+				this.basic.host_name = this._GLOBAL.ProjectList[this._GLOBAL.projectIndex].host_ID;
+				this.basic.description = this._GLOBAL.ProjectList[this._GLOBAL.projectIndex].description;
+				this.basic.start = this._GLOBAL.ProjectList[this._GLOBAL.projectIndex].startDate;
+				this.basic.end = this._GLOBAL.ProjectList[this._GLOBAL.projectIndex].endDate;
+				this.basic.state = this._GLOBAL.ProjectList[this._GLOBAL.projectIndex].state;
+			},
+			getSprintName() {
+				this.axios.post('http://39.97.175.119:8801/sprint/getSpListByPID?ID=' + this._GLOBAL.ProjectList[this._GLOBAL.projectIndex]
+						.ID)
+					.then((response) => {
+						if (response.data.message == '成功') {
+							var list = response.data.data.spList;
+							if (list.length > 0) {
+								this.sprint.name = list[list.length - 1].title;
+								this.sprint.state = list[list.length - 1].state;
+								this.sprint.time = list[list.length - 1].endDate;
+							} else {
+								this.sprint.name = 'NaN';
+								this.sprint.state = 'NaN';
+								this.sprint.time = 'NaN';
+							}
+							// console.log(this.isHost);
+						}
+					})
+			},
+			calculate() {
+				this.axios.get("http://39.97.175.119:8801/task/getTaskListByPid?projectid=" + this._GLOBAL.ProjectList[this._GLOBAL
+						.projectIndex].ID)
+					.then((response) => {
+						if (response.data.message == "成功") {
+							var taskList = response.data.data.task;
+							this.rtd.count = 0;
+							this.rtd.already = 0;
+							this.rtd.processing = 0;
+							this.rtd.nostarting = 0;
+							for (let task of taskList) {
+								this.rtd.count++;
+								if (task.state == "已完成") this.rtd.already++;
+								else if (task.state == "未开始") this.rtd.nostarting++;
+								else this.rtd.processing++;
+							}
+							this.rtd.percentage = this.rtd.count / this.rtd.already;
+						}
+					})
+					.catch(function(error) {
+						console.log(error);
+					});
+				this.axios.post("http://39.97.175.119:8801/requirement/getReqtListByPID?ID=" + this._GLOBAL.ProjectList[this._GLOBAL
+						.projectIndex].ID)
+					.then((response) => {
+						if (response.data.message == "成功") {
+							this.rtd.rCnt = response.data.data.reqtList.length;
+						}
+					})
+					.catch(function(error) {
+						console.log(error);
+					});
+				this.axios.post("http://39.97.175.119:8801/defect/getDefListByPID?ID=" + this._GLOBAL.ProjectList[this._GLOBAL
+						.projectIndex].ID)
+					.then((response) => {
+						if (response.data.message == "成功") {
+							this.rtd.dCnt = response.data.data.defectList.length;
+						}
+					})
+					.catch(function(error) {
+						console.log(error);
+					});
+			},
+			
+			// 			addRequires() {
+			// 				this.$alert('Add a require', 'dialog', {
+			// 					confirmButtonText: 'OK'
+			// 				})
+			// 			},
+			// 			addTasks() {
+			// 				this.$alert('Add a task', 'dialog', {
+			// 					confirmButtonText: 'OK'
+			// 				})
+			// 			},
+			// 			addDefects() {
+			// 				this.$alert('Add a defect', 'dialog', {
+			// 					confirmButtonText: 'OK'
+			// 				})
+			// 			}
 		}
 	}
 </script>

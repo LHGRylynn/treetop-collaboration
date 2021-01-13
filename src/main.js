@@ -10,6 +10,9 @@ import 'element-ui/lib/theme-chalk/index.css'
 
 import axios from 'axios'
 import VueAxios from 'vue-axios'
+
+import echarts from 'echarts'
+Vue.prototype.$echarts = echarts
 Vue.use(VueAxios, axios)
 
 Vue.config.productionTip = false
@@ -20,15 +23,17 @@ Vue.prototype._GLOBAL = {
   userID: 1,
   projectID: 1,
   imgBaseUrl: 'http://39.97.175.119:8080/imgs/',
+  baseUrl: '/api', // 'http://39.97.175.119:8801'
   userObj: {
     ID: 0,
     name: '',
     avatar: ''
-  }
+  },
+  ProjectList:[],
+  projectIndex: 0
 }
 
-/* eslint-disable no-new */
-new Vue({
+Vue.prototype.$eventBus = new Vue({
   el: '#app',
   router,
   components: { App },

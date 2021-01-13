@@ -3,13 +3,13 @@
 		<el-card>
 			<div slot="header">
 				Basic Info
-				<el-button :v-if="isHost" @click="dialogVisible = true" style="float: right; padding: 3px 0" type="text">Modify</el-button>
+				<el-button :v-show="isHost" @click="dialogVisible = true" style="float: right; padding: 3px 0" type="text">Edit</el-button>
 			</div>
 			<div class="card-content">
 				<el-card shadow="never">
 					<div slot="header">Basic</div>
 					<p>Name : {{name}}</p><br />
-					<p>Leader : {{host_name}}</p><br />
+					<p>Leader : </p><br />
 					<p>Start : {{start}}</p><br />
 					<p>End : {{end}}</p><br />
 					<p>Current Status : {{state}}</p>
@@ -20,7 +20,7 @@
 				</el-card>
 			</div>
 		</el-card>
-		<el-dialog title="Modify basic info" :visible.sync="dialogVisible" width="50%" :modal-append-to-body="false">
+		<el-dialog title="Edit basic info" :visible.sync="dialogVisible" width="50%" :modal-append-to-body="false">
 			<el-form :model="form">
 				<el-form-item label="Name" :label-width="formLabelWidth">
 					<el-input v-model="form.name" autocomplete="off" style="width: 65%;"></el-input>
@@ -44,8 +44,8 @@
 				</el-form-item>
 			</el-form>
 			<span slot="footer" class="dialog-footer">
-				<el-button @click="dialogVisible = false">Cancle</el-button>
-				<el-button type="primary" @click="dialogVisible = false">Save</el-button>
+				<el-button @click="dialogVisible = false">Cancel</el-button>
+				<el-button type="primary" @click="saveEdit">Save</el-button>
 			</span>
 		</el-dialog>
 	</div>
@@ -53,27 +53,37 @@
 
 <script>
 	export default {
-		name: 'BasicInfo',
+		//name: 'BasicInfo',
 		props: [
 			'name',
 			'host_name',
 			'start',
 			'end',
-			'description'
+			'description',
+			'state'
 		],
 		data() {
 			return {
 				isHost: true,
 				dialogVisible: false,
 				form: {
-					name: '',
-					status: '',
-					date1: '',
-					date2: '',
-					desc: ''
+					name: this.name,
+					status: this.state,
+					date1: this.start,
+					date2: this.end,
+					desc: this.description
 				},
 				formLabelWidth: '120px',
 			}
+		},
+		created: function() {
+			this.isHostF();
+			this.name = this._GLOBAL.ProjectList[this._GLOBAL.projectIndex].name;
+			this.host_name = this._GLOBAL.ProjectList[this._GLOBAL.projectIndex].host_ID;
+			this.description = this._GLOBAL.ProjectList[this._GLOBAL.projectIndex].description;
+			this.start = this._GLOBAL.ProjectList[this._GLOBAL.projectIndex].startDate;
+			this.end = this._GLOBAL.ProjectList[this._GLOBAL.projectIndex].endDate;
+			this.state = this._GLOBAL.ProjectList[this._GLOBAL.projectIndex].state;
 		},
 		methods: {
 			handleClose(done) {
@@ -82,6 +92,40 @@
 						done();
 					})
 					.catch(_ => {});
+			},
+			isHostF() {
+				this.axios.get('http://39.97.175.119:8801/project/isPrjHost', {
+						params: {
+							ID: this._GLOBAL.ProjectList[this._GLOBAL.projectIndex].ID,
+							UID: this._GLOBAL.userObj.ID
+						}
+					})
+					.then((response) => {
+						if (response.data.message == '成功') {
+							this.isHost = response.data.data.isHost;
+							// console.log(this.isHost);
+						}
+					})
+			},
+			saveEdit() {
+				this.dialogVisible = false;
+				this.axios.post('/api/project/updatePrjAll', {
+					"name": this.form.name,
+					"description": this.form.desc,
+					"startDate": this.form.start,
+					"endDate": this.form.end,
+					"state": this.form.status,
+					"ID": this._GLOBAL.ProjectList[this._GLOBAL.projectIndex].ID
+				}, {
+					emulateJSON: true
+				})
+				.then((response) => {
+					if (response.data.message == '成功') {
+						alert('Edit successfully!');
+					} else {
+						alert('Edit fail!');
+					}
+				})
 			}
 		}
 	}
